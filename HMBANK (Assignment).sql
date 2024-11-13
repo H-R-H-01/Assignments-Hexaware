@@ -230,3 +230,88 @@ VALUES
 
 
 -- Task 4 --
+-- 1. Retrieve the customer(s) with the highest account balance.
+SELECT customer_id, first_name, last_name
+FROM Customers
+WHERE customer_id IN (
+SELECT customer_id
+FROM Accounts
+WHERE balance = (SELECT MAX(balance) FROM Accounts)
+)
+
+-- 2. Calculate the average account balance for customers who have more than one account.
+SELECT AVG(balance) AS average_balance
+FROM Accounts
+WHERE customer_id IN (
+SELECT customer_id
+FROM Accounts
+GROUP BY customer_id
+HAVING COUNT(account_id) > 1
+)
+
+-- 3. Retrieve accounts with transactions whose amounts exceed the average transaction amount.
+SELECT account_id, transaction_id, transaction_date, amount
+FROM Transactions
+WHERE amount > (SELECT AVG(amount) FROM Transactions)
+
+-- 4. Identify customers who have no recorded transactions.
+	
+	--Removing transactions for account id 1, to have no recorded transactions
+	DELETE FROM Transactions WHERE account_id = 1
+
+SELECT customer_id, first_name, last_name
+FROM Customers
+WHERE customer_id NOT IN (
+SELECT DISTINCT customer_id
+FROM Accounts a
+JOIN Transactions t ON a.account_id = t.account_id
+)
+
+-- 5. Calculate the total balance of accounts with no recorded transactions.
+SELECT SUM(balance) AS total_balance_no_transactions
+FROM Accounts
+WHERE account_id NOT IN (
+SELECT DISTINCT account_id
+FROM Transactions
+)
+
+-- 6. Retrieve transactions for accounts with the lowest balance.
+SELECT transaction_id, account_id, transaction_date, amount
+FROM Transactions
+WHERE account_id = (
+SELECT account_id
+FROM Accounts
+WHERE balance = (SELECT MIN(balance) FROM Accounts)
+)
+
+-- 7. Identify customers who have accounts of multiple types.
+	--Inserting values to enable a customer (id=3) to have multiple accounts
+	INSERT INTO Accounts (account_id, customer_id, account_type, balance)
+	VALUES (15, 3, 'current', 500.00)
+		
+SELECT customer_id, first_name, last_name
+FROM Customers
+WHERE customer_id IN (
+SELECT customer_id
+FROM Accounts
+GROUP BY customer_id
+HAVING COUNT(DISTINCT account_type) > 1
+)
+
+-- 8. Calculate the percentage of each account type out of the total number of accounts.
+SELECT account_type, 
+(COUNT(account_id) * 100.0 / (SELECT COUNT(*) FROM Accounts)) AS percentage
+FROM Accounts
+GROUP BY account_type
+
+-- 9. Retrieve all transactions for a customer with a given customer_id (= 3).
+SELECT t.transaction_id, t.account_id, t.transaction_date, t.transaction_type, t.amount
+FROM Transactions t
+JOIN Accounts a ON t.account_id = a.account_id
+WHERE a.customer_id = 3
+
+-- 10. Calculate the total balance for each account type, including a subquery within the SELECT clause.
+SELECT account_type, 
+(SELECT SUM(balance) FROM Accounts WHERE account_type = a.account_type) AS total_balance
+FROM Accounts a
+GROUP BY account_type
